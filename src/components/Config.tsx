@@ -40,6 +40,9 @@ const defaultConfig = {
 export const Config: React.FC<ConfigProps> = ({ onApply, configText, setConfigText }) => {
   const [error, setError] = useState<ConfigError | null>(null);
   const isFirstRender = useRef(true);
+  const lineCount = configText.split("\n").length;
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     // Only set default config on first render if configText is empty
@@ -138,17 +141,40 @@ export const Config: React.FC<ConfigProps> = ({ onApply, configText, setConfigTe
     }
   };
 
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
+  const handleLineNumberScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (textareaRef.current) {
+      textareaRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
   return (
     <div className="config-container">
-      <textarea
-        value={configText}
-        onChange={(e) => {
-          setConfigText(e.target.value);
-          setError(null);
-        }}
-        style={{ width: "100%", marginBottom: "20px", minHeight: "300px", height: "100%" }}
-        className={error ? "has-error" : ""}
-      />
+      <div className="textarea-wrapper" style={{ width: "100%" }}>
+        <div className="line-numbers" ref={lineNumbersRef} onScroll={handleLineNumberScroll}>
+          {Array.from({ length: lineCount }, (_, i) => (
+            <div key={i + 1} className={error?.line === i + 1 ? "line-number error" : "line-number"}>
+              {i + 1}
+            </div>
+          ))}
+        </div>
+        <textarea
+          ref={textareaRef}
+          value={configText}
+          onChange={(e) => {
+            setConfigText(e.target.value);
+            setError(null);
+          }}
+          onScroll={handleScroll}
+          style={{ width: "100%", marginBottom: "20px", minHeight: "300px", height: "100%" }}
+          className={error ? "has-error" : ""}
+        />
+      </div>
       {error && (
         <div className="error-message">
           <strong>{error.message}</strong>
