@@ -7,9 +7,11 @@ import { Result } from "./components/Result";
 function App() {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [formConfig, setFormConfig] = useState(null);
+  const [configText, setConfigText] = useState("");
 
-  const handleApply = (config: any) => {
+  const handleApply = (config: any, text: string) => {
     setFormConfig(config);
+    setConfigText(text);
     setActiveTabIndex(1); // Switch to Result tab
   };
 
@@ -17,7 +19,7 @@ function App() {
     <div className="App">
       <Tabs activeTab={activeTabIndex} onTabChange={setActiveTabIndex}>
         <Tab label="Config">
-          <Config onApply={handleApply} />
+          <Config onApply={handleApply} configText={configText} setConfigText={setConfigText} />
         </Tab>
         <Tab label="Result">
           <Result config={formConfig} />

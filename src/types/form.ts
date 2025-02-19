@@ -9,7 +9,7 @@ export interface FormField {
 }
 
 export interface FormConfig {
-  title: string;
+  title?: string;
   items: FormField[];
   buttons: string[];
 }

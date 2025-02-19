@@ -96,21 +96,23 @@ export const Result: React.FC<ResultProps> = ({ config, onSubmit }) => {
 
   return (
     <div className="form-container">
-      <h2>{config.title}</h2>
+      {config.title && <h2>{config.title}</h2>}
       <form onSubmit={handleSubmit}>
-        {config.items.map((field, index) => (
+        {config.items?.map((field, index) => (
           <div key={index} className="form-row">
             <label>{field.label}</label>
             {renderField(field)}
           </div>
         ))}
-        <div className="button-container">
-          {config.buttons.map((button, index) => (
-            <button key={index} type="button">
-              {button}
-            </button>
-          ))}
-        </div>
+        {config.buttons?.length > 0 && (
+          <div className="button-container">
+            {config.buttons.map((button, index) => (
+              <button key={index} type="button">
+                {button}
+              </button>
+            ))}
+          </div>
+        )}
       </form>
     </div>
   );

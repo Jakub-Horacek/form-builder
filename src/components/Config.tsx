@@ -1,13 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FormConfig } from "../types/form";
+import "./Config.css";
 
 interface ConfigProps {
-  onApply: (config: FormConfig) => void;
+  onApply: (config: FormConfig, text: string) => void;
+  configText: string;
+  setConfigText: (text: string) => void;
 }
 
 interface ConfigError {
   message: string;
   line?: number;
+  details?: string;
 }
 
 const defaultConfig = {
@@ -33,24 +37,72 @@ const defaultConfig = {
   buttons: ["Cancel", "Save"],
 };
 
-export const Config: React.FC<ConfigProps> = ({ onApply }) => {
-  const [configText, setConfigText] = useState(JSON.stringify(defaultConfig, null, 2));
+export const Config: React.FC<ConfigProps> = ({ onApply, configText, setConfigText }) => {
   const [error, setError] = useState<ConfigError | null>(null);
+  const isFirstRender = useRef(true);
 
-  const getErrorLineNumber = (error: unknown): number | undefined => {
+  useEffect(() => {
+    // Only set default config on first render if configText is empty
+    if (isFirstRender.current && !configText) {
+      setConfigText(JSON.stringify(defaultConfig, null, 2));
+      isFirstRender.current = false;
+    }
+  }, [configText, setConfigText]);
+
+  const getErrorDetails = (error: unknown): ConfigError => {
     if (error instanceof SyntaxError) {
-      const match = error.message.match(/position (\d+)/);
+      const message = error.message;
+      const match = message.match(/position (\d+)/);
+
+      // Handle common JSON syntax errors
+      if (message.includes("Unexpected token")) {
+        const tokenMatch = message.match(/Unexpected token (.+?)(,|$)/);
+        const token = tokenMatch ? tokenMatch[1] : "";
+
+        if (token === "]") {
+          return {
+            message: "Error: You have an extra comma before the closing bracket ']'",
+            line: match ? configText.substring(0, parseInt(match[1], 10)).split("\n").length : undefined,
+            details: "Remove the trailing comma after the last item in your array",
+          };
+        }
+
+        if (token === "}") {
+          return {
+            message: "Error: You have an extra comma before the closing brace '}'",
+            line: match ? configText.substring(0, parseInt(match[1], 10)).split("\n").length : undefined,
+            details: "Remove the trailing comma after the last property",
+          };
+        }
+
+        // Generic unexpected token error
+        return {
+          message: `Error: Unexpected ${token} found in your JSON`,
+          line: match ? configText.substring(0, parseInt(match[1], 10)).split("\n").length : undefined,
+          details: "Check for missing or extra commas, quotes, or brackets",
+        };
+      }
+
       if (match) {
         const position = parseInt(match[1], 10);
-        return configText.substring(0, position).split("\n").length;
+        const line = configText.substring(0, position).split("\n").length;
+        return {
+          message: "JSON Syntax Error",
+          line,
+          details: "Check for proper JSON formatting: missing commas, quotes, or brackets",
+        };
       }
     }
-    return undefined;
+
+    return {
+      message: error instanceof Error ? error.message : "Invalid configuration",
+      details: "Please ensure your JSON is properly formatted",
+    };
   };
 
   const validateConfig = (config: any): config is FormConfig => {
-    if (!config.title || typeof config.title !== "string") {
-      throw new Error("Configuration must have a title");
+    if (config.title && typeof config.title !== "string") {
+      throw new Error("Title must be a string when provided");
     }
 
     if (!Array.isArray(config.items)) {
@@ -79,13 +131,10 @@ export const Config: React.FC<ConfigProps> = ({ onApply }) => {
       const parsedConfig = JSON.parse(configText);
       if (validateConfig(parsedConfig)) {
         setError(null);
-        onApply(parsedConfig);
+        onApply(parsedConfig, configText);
       }
     } catch (err) {
-      setError({
-        message: err instanceof Error ? err.message : "Invalid configuration",
-        line: getErrorLineNumber(err),
-      });
+      setError(getErrorDetails(err));
     }
   };
 
@@ -102,8 +151,9 @@ export const Config: React.FC<ConfigProps> = ({ onApply }) => {
       />
       {error && (
         <div className="error-message">
-          {error.message}
-          {error.line && ` (Line: ${error.line})`}
+          <strong>{error.message}</strong>
+          {error.line && <div>Line: {error.line}</div>}
+          {error.details && <div className="error-details">{error.details}</div>}
         </div>
       )}
       <button onClick={handleApply}>Apply</button>
